@@ -4,8 +4,8 @@ const Button = ({type, handleClick}) => <button onClick={handleClick}>{type}</bu
 
 const StatisticLine = ({text, value}) => {
   if (text == 'positive')
-    return <div>{text} {value}%</div> 
-  return <div>{text} {value}</div> 
+    return <tr><td>{text}</td> <td>{value.toFixed(1)}</td>%</tr> 
+  return <tr><td>{text}</td> <td>{value}</td></tr> 
 } 
 
 const Statistics = ({good, neutral, bad}) => {
@@ -17,14 +17,14 @@ const Statistics = ({good, neutral, bad}) => {
     return <div>No feedback given</div>
 
   return (
-    <>
+    <table>
       <StatisticLine text={'good'} value={good} />
       <StatisticLine text={'neutral'} value={neutral} />
       <StatisticLine text={'bad'} value={bad} />
       <StatisticLine text={'all'} value={all} />
       <StatisticLine text={'average'} value={average} />
       <StatisticLine text={'positive'} value={positive} />
-    </>
+    </table>
   )
 }
 
