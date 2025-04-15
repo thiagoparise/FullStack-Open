@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import personService from './services/persons';
 
 const Filter = ({ handlePersonsFilter }) => <div>filter shown with <input onChange={handlePersonsFilter} /></div>
+
+const DeleteButton = () => <button>delete</button>
 
 const PersonForm = ({ addNumber, handleNewNumber, handleNewName }) => {
   return (
@@ -19,11 +21,18 @@ const PersonForm = ({ addNumber, handleNewNumber, handleNewName }) => {
   ) 
 }
 
-const Persons = ({ personsFiltered }) => {
+const Persons = ({ personsFiltered, handleDeleteContact }) => {
   return (
     <ul>
         {
-          personsFiltered.map(person => <li key={person.name}>{person.name + ' ' + person.number}</li>)
+          personsFiltered.map(person => 
+          {
+            return (
+                <li key={person.name}>
+                  {`${person.name} ${person.number}  `}
+                  <button onClick={() => handleDeleteContact(person.name, person.id)}>delete</button>
+                </li>)
+          })
         }
     </ul>
   )
@@ -37,11 +46,11 @@ const App = () => {
   const [newNumber, setNewNumber] = useState('')
   
   useEffect(() => {
-    axios
-    .get('http://localhost:3001/persons')
-    .then(response => {
-      setPersons(response.data)
-      setPersonsFiltered(response.data.slice())
+    personService
+      .getAll()
+      .then(initialPersons => {
+        setPersons(initialPersons)
+        setPersonsFiltered(initialPersons.slice())
     })
   }, [])
 
@@ -56,14 +65,46 @@ const App = () => {
     setPersonsFiltered(persons.filter(person => person.name.toLowerCase().includes(event.target.value.toLowerCase())))
   }
 
-  const addNumber = (event) => {
-    event.preventDefault()
-    if (persons.find(person => person.name === newName))
-      alert(`${newName} is already added to the phonebook`)
-    else{
-      const personsUpdated = persons.concat({name: newName, number: newNumber, id: persons.length + 1})
+  const handleDeleteContact = (name, id) => {
+    if ( window.confirm(`Delete ${name}?`) ){
+      const personsUpdated = persons.filter(person => person.id != id)
       setPersons(personsUpdated)
       setPersonsFiltered(personsUpdated.slice())
+      personService
+        .deleteContact(id)
+        .then(deletedContact => console.log(deletedContact))
+    }
+  }
+
+  const addNumber = (event) => {
+    event.preventDefault()
+    const findedPerson = persons.find(person => person.name === newName)
+    
+    if (findedPerson){
+      if ( window.confirm(`${newName} is already added to the phonebook, replace the old number with a new one?`) ) {
+        const personUpdated = {...findedPerson, number: newNumber}
+
+        personService
+          .update(findedPerson.id, personUpdated)
+          .then(response => {
+            const personsUpdated = persons.map(person => person.id === findedPerson.id ? response : person)
+            setPersons(personsUpdated)
+            setPersonsFiltered(personsUpdated.slice())
+          })
+      }
+    }
+    else{
+      const newContact = {
+        name: newName,
+        number: newNumber,
+      }
+      personService
+        .create(newContact)
+        .then(returnedContact => {
+          const personsUpdated = persons.concat(returnedContact)
+          setPersons(personsUpdated)
+          setPersonsFiltered(personsUpdated.slice())
+        })
     }
   }
 
@@ -79,7 +120,7 @@ const App = () => {
 
       <h2>Numbers</h2>
       
-      <Persons personsFiltered={personsFiltered} />
+      <Persons personsFiltered={personsFiltered} handleDeleteContact={handleDeleteContact} />
 
     </div>
   )
