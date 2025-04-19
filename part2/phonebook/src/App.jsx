@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react'
-import personService from './services/persons';
+import personService from './services/persons'
+import './styles.css'
 
 const Filter = ({ handlePersonsFilter }) => <div>filter shown with <input onChange={handlePersonsFilter} /></div>
 
-const DeleteButton = () => <button>delete</button>
+const Notification = ({ message, type }) => {
+  if(message == null)
+    return null
+  return (
+    <div className={`notification ${type}-notification`}>
+      {message}
+    </div>
+  )
+}
 
 const PersonForm = ({ addNumber, handleNewNumber, handleNewName }) => {
   return (
@@ -44,6 +53,7 @@ const App = () => {
   const [personsFiltered, setPersonsFiltered] = useState([]) 
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
+  const [newNotification, setNewNotification] = useState({message: null, type: null})
   
   useEffect(() => {
     personService
@@ -90,7 +100,21 @@ const App = () => {
             const personsUpdated = persons.map(person => person.id === findedPerson.id ? response : person)
             setPersons(personsUpdated)
             setPersonsFiltered(personsUpdated.slice())
+            setNewNotification({
+              message:`Updated ${personUpdated.name}`,
+              type: 'succesful'
+            })
           })
+          .catch(promise => {
+            console.log(promise)
+            setNewNotification({
+              message:`Information of ${personUpdated.name} has already been removed from the server`,
+              type:'error'
+            })
+          })
+        setTimeout(() => {
+          setNewNotification(null)
+        }, 5000)
       }
     }
     else{
@@ -105,12 +129,21 @@ const App = () => {
           setPersons(personsUpdated)
           setPersonsFiltered(personsUpdated.slice())
         })
+      setNewNotification({
+          message:`Added ${newContact.name}`,
+          type:'success'
+      })
+      setTimeout(() => {
+        setNewNotification({message: null, type: null})
+      }, 5000)
     }
   }
 
   return (
     <div>
       <h1>Phonebook</h1>
+
+      <Notification message={newNotification?.message} type={newNotification?.type} />
 
       <Filter handlePersonsFilter={handlePersonsFilter}/>
 
