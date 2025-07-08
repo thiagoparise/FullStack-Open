@@ -5,8 +5,6 @@ const cors = require('cors')
 const app = express()
 const Person = require('./models/person')
 
-const persons = []
-
 app.use(express.json())
 app.use(express.static('dist'))
 app.use(cors())
@@ -20,11 +18,6 @@ morgan.token('data', function(req) {
     return null
 })
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :data'))
-
-
-app.get('/', (request, response) => {
-    response.send('<h1>Hello World!</h1>')
-})
 
 app.get('/api/persons', (request, response) => {
     Person.find({}).then(persons => {
@@ -43,32 +36,56 @@ app.get('/api/persons/:id', (request, response, next) => {
         .catch(error => next(error))
 })
 
-app.get('/info', (request, response) => {
-    response.send(`<p>Phonebook has info for ${persons.length} people</p> <p>${(new Date()).toString()}</p>`)
-})
-
-app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter(person => person.id != id)
-
-    response.status(202).end()
-
-})
-
-app.post('/api/persons/', (request, response) => {  
-    
-    if(request.body.name && request.body.number) {
-        const person = new Person({
-            name: request.body.name,
-            number: request.body.number,
+app.get('/info', (request, response, next) => {
+    Person.estimatedDocumentCount()
+        .then(amount => {
+            response.status(200).send(`<p>Phonebook has info for ${amount} people</p> <p>${(new Date()).toString()}</p>`)
         })
-        person.save().then(result => {
+        .catch(error => next(error))
+
+})
+
+app.delete('/api/persons/:id', (request, response, next) => {
+    Person.findByIdAndDelete(request.params.id)
+        .then(result => {
+            response.status(200).send(result)
+        })
+        .catch(error => next(error))
+})
+
+app.post('/api/persons/', (request, response, next) => {  
+    const body = request.body
+
+    const newPerson = new Person({
+        name: body.name,
+        number: body.number,
+    })
+
+    newPerson.save()
+        .then(result => {
             console.log(`added ${result.name} number ${result.number} to phonebook`);
+            response.status(201).send(newPerson)
         })
-        response.status(201).send(person)
-    } else {
-        response.status(400).send({ error: 'information is missing' })
+        .catch(error => next(error))
+})
+
+app.put('/api/persons/:id', (request, response, next) => {
+    const body = request.body
+
+    const updatedPerson = {
+        name: body.name,
+        number: body.number,
     }
+
+    Person.findByIdAndUpdate(request.params.id, updatedPerson, {new: true, runValidators: true})
+        .then(person => {
+            if (person) {
+                response.status(200).send(person)
+            } else {
+                response.status(404).send({ error: 'contact not found'})
+            }
+        })
+        .catch(error => next(error))
 })
 
 const errorHandler = (error, request, response, next) => {
@@ -76,7 +93,9 @@ const errorHandler = (error, request, response, next) => {
 
     if (error.name === 'CastError') {
         return response.status(400).send({ error: 'malformatted id' })
-    } 
+    } else if (error.name === 'ValidationError') {
+        return response.status(400).send({ error: error.message })
+    }
 
     next(error)
 }
