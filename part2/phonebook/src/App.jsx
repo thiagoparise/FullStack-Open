@@ -59,8 +59,8 @@ const App = () => {
     personService
       .getAll()
       .then(initialPersons => {
-        setPersons(initialPersons)
-        setPersonsFiltered(initialPersons.slice())
+        setPersons(initialPersons.data)
+        setPersonsFiltered(initialPersons.data.slice())
     })
   }, [])
 
@@ -82,7 +82,13 @@ const App = () => {
       setPersonsFiltered(personsUpdated.slice())
       personService
         .deleteContact(id)
-        .then(deletedContact => console.log(deletedContact))
+        .then(deletedContact => {
+          console.log(deletedContact)
+          setNewNotification({
+              message:`${deletedContact.data.name} deleted successfully`,
+              type: 'success'
+            })
+        })
     }
   }
 
@@ -97,18 +103,18 @@ const App = () => {
         personService
           .update(findedPerson.id, personUpdated)
           .then(response => {
-            const personsUpdated = persons.map(person => person.id === findedPerson.id ? response : person)
+            const personsUpdated = persons.map(person => person.id === findedPerson.id ? response.data : person)
             setPersons(personsUpdated)
             setPersonsFiltered(personsUpdated.slice())
             setNewNotification({
               message:`Updated ${personUpdated.name}`,
-              type: 'succesful'
+              type: 'success'
             })
           })
-          .catch(promise => {
-            console.log(promise)
+          .catch(error => {
+            console.log(error)
             setNewNotification({
-              message:`Information of ${personUpdated.name} has already been removed from the server`,
+              message: error.response.data.error,
               type:'error'
             })
           })
@@ -117,7 +123,7 @@ const App = () => {
         }, 5000)
       }
     }
-    else{
+    else {
       const newContact = {
         name: newName,
         number: newNumber,
@@ -125,14 +131,20 @@ const App = () => {
       personService
         .create(newContact)
         .then(returnedContact => {
-          const personsUpdated = persons.concat(returnedContact)
+          const personsUpdated = persons.concat(returnedContact.data)
           setPersons(personsUpdated)
           setPersonsFiltered(personsUpdated.slice())
+          setNewNotification({
+              message:`Added ${newContact.name}`,
+              type:'success'
+          })
         })
-      setNewNotification({
-          message:`Added ${newContact.name}`,
-          type:'success'
-      })
+        .catch(error => {
+          setNewNotification({
+              message: error.response.data.error,
+              type:'error'
+          })
+        })
       setTimeout(() => {
         setNewNotification({message: null, type: null})
       }, 5000)
